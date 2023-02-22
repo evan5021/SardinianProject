@@ -195,7 +195,6 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
     # main loop over training epochs
     for e in range(epochs):
         hidden = None # reste hidden state after each epoch
-        print('epoch ' + str(e))
         
         # loop over batches
         for x, y in get_batches(data, n_seqs, n_steps):
@@ -289,8 +288,6 @@ print(device)
 
 # load data
 chars, data = load_data('test_train_clean.txt')
-
-print(chars)
 
 # create RNN
 net = CharRNN(chars, n_hidden=256, n_layers=3)
