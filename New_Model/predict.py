@@ -28,6 +28,7 @@ def load_checkpoint(filename):
     return net, train_history
 
 
+"""
 def sample_lines(net, n_lines=3, prime='import', top_k=None, device='cpu', max_len=1):
     net.to(device)
     net.eval()
@@ -51,7 +52,9 @@ def sample_lines(net, n_lines=3, prime='import', top_k=None, device='cpu', max_l
                 break
 
     return ''.join(chars)
+"""
 
+"""
 def test_against_string(net, n_lines=1, prime='import', top_k=None, device='cpu', display=False):
     max_len = len(prime)
     net.to(device)
@@ -85,11 +88,14 @@ def test_against_string(net, n_lines=1, prime='import', top_k=None, device='cpu'
 
     print(str(correct_chars/max_len) + '% correct\n')
     return ''.join(chars)
+"""
 
 def test_against_string_word(net, n_lines=1, prime='import', top_k=None, device='cpu', display=False):
     max_len = 20
     net.to(device)
     net.eval()
+
+    top_k = 3
 
     # First off, run through the prime characters
     chars = []
@@ -100,7 +106,12 @@ def test_against_string_word(net, n_lines=1, prime='import', top_k=None, device=
     chars.append(char)
 
     for ii in range(1, max_len):
-        char, h = net.predict(chars[-1], h, device=device, top_k=top_k)
+        res = net.predict(chars[-1], h, device=device, top_k=top_k)
+        print('RES:', res)
+        char = res[0]
+        h = res[1]
+        #char, h, topch = net.predict(chars[-1], h, device=device, top_k=top_k)
+
 
         if char == ' ':
             chars.append(' ')

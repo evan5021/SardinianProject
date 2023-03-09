@@ -2,6 +2,8 @@
 import matplotlib.pyplot as plt
 from IPython import display # live plotting
 
+import sys
+
 from datetime import datetime
 import numpy as np
 
@@ -149,7 +151,10 @@ class CharRNN(nn.Module):
                 p = p.numpy().squeeze()
                 char = np.random.choice(top_ch, p=p / p.sum())
 
-            return self.int2char[char], hidden
+            top_k_chars = [self.int2char[i] for i in top_ch]
+            print('TOP_K_CHARS:', top_k_chars)
+
+            return self.int2char[char], hidden, top_k_chars
 
 
 def save_checkpoint(net, opt, filename, train_history={}):
