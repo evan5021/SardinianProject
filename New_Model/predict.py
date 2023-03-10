@@ -101,21 +101,11 @@ def test_against_string_word(net, n_lines=1, prime='import', top_k=None, device=
     chars = []
     h = None
     for ch in prime:
-        #print(net.predict(ch, h, device=device, top_k=top_k))
-        try:
-            char, h, top_k_chars = net.predict(ch, h, device=device, top_k=top_k)
-        except ValueError:
-            char, h = net.predict(ch, h, device=device, top_k=top_k)
-
-    chars.append(char)
+        char, h, top_k_chars = net.predict(ch, h, device=device, top_k=top_k)
+        chars.append(char)
 
     for ii in range(1, max_len):
-        res = net.predict(chars[-1], h, device=device, top_k=top_k)
-        print('RES:', res)
-        char = res[0]
-        h = res[1]
-        #char, h, topch = net.predict(chars[-1], h, device=device, top_k=top_k)
-
+        char, h, topch = net.predict(chars[-1], h, device=device, top_k=top_k)
 
         if char == ' ':
             chars.append(' ')
