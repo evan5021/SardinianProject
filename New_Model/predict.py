@@ -95,13 +95,17 @@ def test_against_string_word(net, n_lines=1, prime='import', top_k=None, device=
     net.to(device)
     net.eval()
 
-    top_k = 3
+    #top_k = 3
 
     # First off, run through the prime characters
     chars = []
     h = None
     for ch in prime:
-        char, h = net.predict(ch, h, device=device, top_k=top_k)
+        #print(net.predict(ch, h, device=device, top_k=top_k))
+        try:
+            char, h, top_k_chars = net.predict(ch, h, device=device, top_k=top_k)
+        except ValueError:
+            char, h = net.predict(ch, h, device=device, top_k=top_k)
 
     chars.append(char)
 

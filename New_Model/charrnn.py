@@ -151,7 +151,13 @@ class CharRNN(nn.Module):
                 p = p.numpy().squeeze()
                 char = np.random.choice(top_ch, p=p / p.sum())
 
-            top_k_chars = [self.int2char[i] for i in top_ch]
+            top_k_chars = []
+            for i in top_ch:
+                top_k_chars.append(self.int2char[i])
+            #top_k_chars = [self.int2char[i] for i in top_ch]
+            
+            print(self.int2char[char])
+            print(hidden)
             print('TOP_K_CHARS:', top_k_chars)
 
             return self.int2char[char], hidden, top_k_chars
