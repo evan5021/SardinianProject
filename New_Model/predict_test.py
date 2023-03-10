@@ -136,18 +136,21 @@ for line in files:
     clean_prefix = clean_string(line)
     while i < len(clean_prefix):
         temp_prefix=clean_prefix[0:i+1]
-        print(temp_prefix)
         temp_output = test_against_string_word(net, 1, prime=temp_prefix, top_k=3)
+        continuations = [temp_output[0][len(temp_prefix):],
+            temp_output[1][len(temp_prefix):],
+            temp_output[2][len(temp_prefix):]]
+        #print(temp_prefix, '|||', temp_output, continuations)
         if temp_output[0] == clean_prefix[0:len(temp_output[0])]:
-            print(Fore.GREEN + temp_output[0] + Style.RESET_ALL)
+            print(temp_prefix + Fore.GREEN + continuations[0] + Style.RESET_ALL, ' ['+str(len(continuations[0])-1)+']')
             saved_clicks = saved_clicks + len(temp_output[0]) - (i + 1)
             i = len(temp_output[0])
         elif temp_output[1] == clean_prefix[0:len(temp_output[1])]:
-            print(Fore.GREEN + temp_output[1] + Style.RESET_ALL)
+            print(temp_prefix + Fore.GREEN + continuations[1] + Style.RESET_ALL, ' ['+str(len(continuations[1])-1)+']')
             saved_clicks = saved_clicks + len(temp_output[1]) - (i + 1)
             i = len(temp_output[1])
         elif temp_output[2] == clean_prefix[0:len(temp_output[2])]:
-            print(Fore.GREEN + temp_output[2] + Style.RESET_ALL)
+            print(temp_prefix + Fore.GREEN + continuations[2] + Style.RESET_ALL, ' ['+str(len(continuations[2])-1)+']')
             saved_clicks = saved_clicks + len(temp_output[2]) - (i + 1)
             i = len(temp_output[2])
         else:
