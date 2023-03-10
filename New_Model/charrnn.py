@@ -130,7 +130,7 @@ class CharRNN(nn.Module):
             try:
                 x = np.array([[self.char2int[char]]])
             except KeyError:
-                return '', hidden, []
+                return '', hidden, [' ', ' ', ' ']
 
             x = one_hot_encode(x, len(self.chars))
             inputs = torch.from_numpy(x).to(device)
@@ -156,9 +156,9 @@ class CharRNN(nn.Module):
                 top_k_chars.append(self.int2char[i])
             #top_k_chars = [self.int2char[i] for i in top_ch]
             
-        #    print(self.int2char[char])
-        #    print(hidden)
-        #    print('TOP_K_CHARS:', top_k_chars)
+            #print(self.int2char[char])
+            #print(hidden)
+            #print('TOP_K_CHARS:', top_k_chars)
 
             return self.int2char[char], hidden, top_k_chars
 
