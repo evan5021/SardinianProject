@@ -130,7 +130,7 @@ class CharRNN(nn.Module):
             try:
                 x = np.array([[self.char2int[char]]])
             except KeyError:
-                return '', hidden, [' ', ' ', ' ']
+                return '', hidden, ['', '', '']
 
             x = one_hot_encode(x, len(self.chars))
             inputs = torch.from_numpy(x).to(device)
@@ -162,6 +162,50 @@ class CharRNN(nn.Module):
 
             return self.int2char[char], hidden, top_k_chars
 
+    def predict_beam(self, char, hidden=None, device=torch.device('cpu'), top_k=None):
+        """
+        Given a character, predict the next character. Returns the predicted character and the hidden state.
+        """
+        with torch.no_grad():
+            self.to(device)
+            
+            try:
+                x = np.array([[self.char2int[char]]])
+            except KeyError:
+                #return ['', '', ''], [0, 0, 0], hidden
+                return [''] * top_k, [0] * top_k, hidden
+
+            x = one_hot_encode(x, len(self.chars))
+            inputs = torch.from_numpy(x).to(device)
+
+            out, hidden = self.forward(inputs, hidden)
+
+            p = F.softmax(out, dim=2).data.to('cpu')
+
+            if top_k is None:
+                top_ch = np.arange(len(self.chars))
+            else:
+                p, top_ch = p.topk(top_k)
+                top_ch = top_ch.numpy().squeeze()
+                #print("p: ", p,"top_ch: ", top_ch)
+                p_list_temp = p.tolist()
+                #print(p_list_temp)
+                p_list = []
+                for r in range(top_k):
+                    p_list.append(p_list_temp[0][0][r])
+
+            if top_k == 1:
+                char = int(top_ch)
+            else:
+                p = p.numpy().squeeze()
+                char = np.random.choice(top_ch, p=p / p.sum())
+
+            top_k_chars = []
+            #print("top_ch: ", top_ch)
+            for i in top_ch.ravel().tolist():
+                top_k_chars.append(self.int2char[i])
+                
+            return top_k_chars, p_list, hidden
 
 def save_checkpoint(net, opt, filename, train_history={}):
     """
