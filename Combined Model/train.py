@@ -17,7 +17,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # load data
-chars, vars, data = load_data_cl()
+chars, all_vars, data = load_data('data')
+
+#print('chars: ', chars)
+#print('all_vars: ', all_vars)
+#print('data: ', data)
+
+#data shape [[['i', 'sc-camp'], ['g', 'sc-camp']], ...]
 
 #print(data)
 #print(chars)
@@ -28,7 +34,7 @@ n_layers=3
 #set variants
 
 # create RNN
-net = CharRNN(chars, vars, n_hidden=256, n_layers=3)
+net = CharRNN(chars, all_vars, n_hidden=256, n_layers=3)
 
 # train
 #plt.figure(figsize=(12, 4))

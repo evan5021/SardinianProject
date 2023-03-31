@@ -1,7 +1,7 @@
-#%matplotlib inline
 import matplotlib.pyplot as plt
 from IPython import display # live plotting
 import glob
+import os
 
 import sys
 
@@ -12,97 +12,53 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-#def load_data(filepath, chars=None):
-#    """
-#    Opens a data file, determines the set of characters present in the file and encodes the characters.
-#    """
-#    with open(filepath, 'r') as f:
-#        data = f.read()
-#
-#    if chars is None:
-#        chars = tuple(set(data))
-#    
-#    # lookup tables for encoding
-#    int2char = dict(enumerate(chars))
-#    char2int = {ch: ii for ii, ch in int2char.items()}
-#    
-#    # encoding
-#    encoded = np.array([char2int[ch] for ch in data])
-#
-#    return chars, encoded
-#
-#def findFiles(path): return glob.glob(path)
-#
-#def readLines(filename):
-#    lines = open(filename).read().strip().split('\n')
-#    return lines
-#
-#def load_data_cl(chars=None):
-#    """
-#    Opens a data file, determines the set of characters present in the file and encodes the characters.
-#    """
-#    
-#    category_lines = {}
-#    all_categories = []
-#    for filename in findFiles('data/*.txt'):
-#        category = filename.split('/')[-1].split('.')[0]
-#        all_categories.append(category)
-#        lines = readLines(filename)
-#        category_lines[category] = lines
-#
-#    n_categories = len(all_categories)
-#    
-#        #print('data: ', data)
-#    if chars is None:
-#        # Code to get unique characters
-#        unique_chars = set()
-#        for value in category_lines.values():
-#            unique_chars.update(set(value))
-#        chars = tuple(unique_chars)
-#        #chars = tuple(set(data))
-#    
-#    # lookup tables for encoding
-#    int2char = dict(enumerate(chars))
-#    char2int = {ch: ii for ii, ch in int2char.items()}
-#    
-#    # encoding
-#    encoded_dict = {}
-#    for value in category_lines:
-#        encoded = np.array([char2int[ch] for ch in category_lines[value]])
-#        encoded_dict[value] = encoded
-#    
-#    
-#    return chars, all_categories, encoded_dict
-#
-
-def load_data(path):
+def load_data(path):    
     data_files = glob.glob(path +'/*.txt')	
     data = []
     all_lines = {}
     all_vars = []
+    all_text = '' #Added a var that holds all the text
     for fn in data_files:
         var = os.path.basename(fn).split('.')[0]
         all_lines[var] = open(fn).readlines()
+        for lines in all_lines[var]:
+            #print(lines)
+            all_text += lines #Add all text to all_text
         all_vars.append(var)
 
-    chars = set()
+    #chars = set()
+    
+    chars = tuple(set(all_text)) #Collects a set of all the chars
+    #print(chars)
+    
+    #print(all_lines)
+    
+    """
     for var in all_lines:
         for line in all_lines[var]:
-            chars.add([i for i in line])
-
-    print(chars)
+            #print(line)
+            chars.add(i for i in line)
+    """
+    
     idx2chars = list(chars)
+    #print(idx2chars)
     char2idx = {j: i for i, j in enumerate(idx2chars)} 
-
+    print(char2idx)
+    
+    #print(all_lines)
+    
     for var in all_lines:
-        for line in lines:
+        for line in all_lines[var]:
             new_line = []
             for char in line:
-                new_line.append([char, var]) 
+                new_line.append([char2idx[char], var]) 
             data.append(new_line)
 
-     print(data[:10])
-     return chars, all_vars, data
+    #print(data[:10])
+    
+    #We want to return an encoded array for 'data'
+    #
+    return chars, all_vars, data
 
 def one_hot_encode(arr, n_labels):
     """
@@ -131,6 +87,7 @@ def get_batches(arr, n_seqs, n_steps): #maybe add another element that is the va
     arr = arr[:n_batches * batch_size]
     
     # reshape
+    #print(arr)
     
     #cannot reshape list
     arr = arr.reshape((n_seqs, -1))
@@ -159,7 +116,7 @@ class CharRNN(nn.Module):
 
         #add something like
         #self.n_features = 2
-        
+        print('vars_ls: ', vars_ls)
         self.vars = vars_ls
         self.chars = tokens
         self.int2char = dict(enumerate(self.chars))
@@ -259,10 +216,8 @@ class CharRNN(nn.Module):
 
             return self.int2char[char], out_var, hidden, top_k_chars
 
+"""
     def predict_beam(self, char, hidden=None, device=torch.device('cpu'), top_k=None):
-        """
-        Given a character, predict the next character. Returns the predicted character and the hidden state.
-        """
         with torch.no_grad():
             self.to(device)
             
@@ -303,6 +258,7 @@ class CharRNN(nn.Module):
                 top_k_chars.append(self.int2char[i])
                 
             return top_k_chars, p_list, hidden
+"""
 
 def save_checkpoint(net, opt, filename, train_history={}):
     """
@@ -346,17 +302,12 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
     
     #Currently 'data' is a dictionary of vars:[text]
     
-    data_list = []
-    for value in data:
-        for item in data[value]:
-            data_list.append([value, item])
-    
     # create training and validation data
-    val_idx = int(len(data_list) * (1 - val_frac))
+    val_idx = int(len(data) * (1 - val_frac))
     
     
     
-    data_list, val_data = data_list[:val_idx], data_list[val_idx:]
+    data, val_data = data[:val_idx], data[val_idx:]
     
     net.to(device) # move neural net to GPU/CPU memory
     
@@ -371,7 +322,7 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
         hidden = None # reste hidden state after each epoch
         
         # loop over batches
-        for x, y in get_batches(data_list, n_seqs, n_steps):
+        for x, y in get_batches(data, n_seqs, n_steps):
 
             # encode data and create torch-tensors
             x = one_hot_encode(x, n_chars)
