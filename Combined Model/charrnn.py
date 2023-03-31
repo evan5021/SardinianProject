@@ -65,14 +65,6 @@ def load_data_cl(chars=None):
 
     n_categories = len(all_categories)
     
-    """
-    data = ''
-    for item in category_lines:
-        #print('item: ', item)
-        for line in category_lines[item]:
-            data = data + line + '\n'
-    """
-    
         #print('data: ', data)
     if chars is None:
         # Code to get unique characters
@@ -112,7 +104,7 @@ def one_hot_encode(arr, n_labels):
     return one_hot
 
 
-def get_batches(arr, n_seqs, n_steps):
+def get_batches(arr, n_seqs, n_steps): #maybe add another element that is the variant
     """
     Batch generator that returns mini-batches of size (n_seqs x n_steps)
     """
@@ -123,6 +115,8 @@ def get_batches(arr, n_seqs, n_steps):
     arr = arr[:n_batches * batch_size]
     
     # reshape
+    
+    #cannot reshape list
     arr = arr.reshape((n_seqs, -1))
     
     for n in range(0, arr.shape[1], n_steps):
@@ -141,18 +135,24 @@ class CharRNN(nn.Module):
     def __init__(self, tokens, vars_ls, n_hidden=256, n_layers=2, drop_prob=0.5, num_vars = 4):
         """
         Basic implementation of a multi-layer RNN with LSTM cells and Dropout.
-        """
+        """        
         super().__init__()
         self.drop_prob = drop_prob
         self.n_layers = n_layers
         self.n_hidden = n_hidden
 
+        #add something like
+        #self.n_features = 2
+        
         self.vars = vars_ls
         self.chars = tokens
         self.int2char = dict(enumerate(self.chars))
         self.char2int = {ch: ii for ii, ch in self.int2char.items()}
 
         self.dropout = nn.Dropout(drop_prob)
+        
+        #Perhaps replace self.lstm... with
+        #self.conv = nn.conv2d(len(self.chars), n_hidden, n_layers, dropout=drop_prob, batch_first=True)
         self.lstm = nn.LSTM(len(self.chars), n_hidden, n_layers,
                             dropout=drop_prob, batch_first=True)
         self.fc1 = nn.Linear(n_hidden, len(self.chars))
@@ -165,23 +165,45 @@ class CharRNN(nn.Module):
     def get_n_layers(self):
         return self.n_layers
 
-    def forward(self, x, hidden):
+    
+    #do we need to pass two things here?
+    #maybe have two forwards?
+    def forward(self, x, hidden): #self, x1, x2, hidden
         """
         Forward pass through the network
         """
 
         x, hidden = self.lstm(x, hidden)
         x = self.dropout(x)
+        
+        
+        x_var , new_hidden = forward_help(x, hidden)
+        #Maybe combine x with x_var to pass it into self.fc1
+        
+        #c = self.conv(x1)
+        #x_var = self.fc1(x2)
+        #combined = torch.cat((c.view(c.size(0), -1),  x_var.view(x_var.size(0), -1)), dim=1)
+        #x_char = self.fc2(combined)
+        
         x_char = self.fc1(x)
         
-        x_var = self.fc2(x)
+        
 
         return x_var, x_char, hidden
 
+    def forward_help(self, x, hidden):
+        x, hidden = self.lstm(x, hidden)
+        x = self.dropout(x)
+        
+        x_var = self.fc2(x)
+        
+        return x_var, hidden
+    
     def predict(self, char, hidden=None, device=torch.device('cpu'), top_k=None):
         """
         Given a character, predict the next character. Returns the predicted character and the hidden state.
         """
+        
         with torch.no_grad():
             self.to(device)
             try:
@@ -189,10 +211,12 @@ class CharRNN(nn.Module):
             except KeyError:
                 return '', hidden, ['', '', '']
 
-            x = one_hot_encode(x, len(self.chars))
+            x = one_hot_encode(x1, len(self.chars))
+
             inputs = torch.from_numpy(x).to(device)
 
-            out_char, out_var, hidden = self.forward(inputs, hidden)
+            out_char, out_var, hidden = self.forward(inputs, hidden) #inputs1, inputs2, hidden
+
 
             p = F.softmax(out, dim=2).data.to('cpu')
 
@@ -236,7 +260,7 @@ class CharRNN(nn.Module):
             inputs = torch.from_numpy(x).to(device)
 
             out, hidden = self.forward(inputs, hidden)
-
+            
             p = F.softmax(out, dim=2).data.to('cpu')
 
             if top_k is None:
@@ -302,9 +326,21 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
     opt = torch.optim.Adam(net.parameters(), lr=lr) # initialize optimizer
     criterion = nn.CrossEntropyLoss() # initialize loss function
 
+    
+    
+    #Currently 'data' is a dictionary of vars:[text]
+    
+    data_list = []
+    for value in data:
+        for item in data[value]:
+            data_list.append([value, item])
+    
     # create training and validation data
-    val_idx = int(len(data) * (1 - val_frac))
-    data, val_data = data[:val_idx], data[val_idx:]
+    val_idx = int(len(data_list) * (1 - val_frac))
+    
+    
+    
+    data_list, val_data = data_list[:val_idx], data_list[val_idx:]
     
     net.to(device) # move neural net to GPU/CPU memory
     
@@ -319,7 +355,7 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
         hidden = None # reste hidden state after each epoch
         
         # loop over batches
-        for x, y in get_batches(data, n_seqs, n_steps):
+        for x, y in get_batches(data_list, n_seqs, n_steps):
 
             # encode data and create torch-tensors
             x = one_hot_encode(x, n_chars)
