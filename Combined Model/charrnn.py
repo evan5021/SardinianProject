@@ -18,13 +18,19 @@ def load_data(path):
     all_lines = {}
     all_vars = []
     all_text = '' #Added a var that holds all the text
+    i = 0
+    
+    idx2var = []
+    
     for fn in data_files:
         var = os.path.basename(fn).split('.')[0]
-        all_lines[var] = open(fn).readlines()
-        for lines in all_lines[var]:
+        all_lines[i] = open(fn).readlines()
+        idx2var.append((var,i))
+        for lines in all_lines[i]:
             #print(lines)
             all_text += lines #Add all text to all_text
         all_vars.append(var)
+        i += 1
 
     #chars = set()
     
@@ -44,6 +50,8 @@ def load_data(path):
     #print(idx2chars)
     char2idx = {j: i for i, j in enumerate(idx2chars)} 
     print(char2idx)
+    
+    print(idx2var)
     
     #print(all_lines)
     

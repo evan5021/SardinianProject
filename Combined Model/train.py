@@ -23,9 +23,9 @@ chars, all_vars, data = load_data('data')
 #print('all_vars: ', all_vars)
 #print('data: ', data)
 
-#data shape [[['i', 'sc-camp'], ['g', 'sc-camp']], ...]
+#data shape [[[20, 'sc-camp'], [13, 'sc-camp']], ...]
 
-#print(data)
+print(data)
 #print(chars)
 
 n_hidden=256
