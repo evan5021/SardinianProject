@@ -11,82 +11,98 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
-     
 
+#def load_data(filepath, chars=None):
+#    """
+#    Opens a data file, determines the set of characters present in the file and encodes the characters.
+#    """
+#    with open(filepath, 'r') as f:
+#        data = f.read()
+#
+#    if chars is None:
+#        chars = tuple(set(data))
+#    
+#    # lookup tables for encoding
+#    int2char = dict(enumerate(chars))
+#    char2int = {ch: ii for ii, ch in int2char.items()}
+#    
+#    # encoding
+#    encoded = np.array([char2int[ch] for ch in data])
+#
+#    return chars, encoded
+#
+#def findFiles(path): return glob.glob(path)
+#
+#def readLines(filename):
+#    lines = open(filename).read().strip().split('\n')
+#    return lines
+#
+#def load_data_cl(chars=None):
+#    """
+#    Opens a data file, determines the set of characters present in the file and encodes the characters.
+#    """
+#    
+#    category_lines = {}
+#    all_categories = []
+#    for filename in findFiles('data/*.txt'):
+#        category = filename.split('/')[-1].split('.')[0]
+#        all_categories.append(category)
+#        lines = readLines(filename)
+#        category_lines[category] = lines
+#
+#    n_categories = len(all_categories)
+#    
+#        #print('data: ', data)
+#    if chars is None:
+#        # Code to get unique characters
+#        unique_chars = set()
+#        for value in category_lines.values():
+#            unique_chars.update(set(value))
+#        chars = tuple(unique_chars)
+#        #chars = tuple(set(data))
+#    
+#    # lookup tables for encoding
+#    int2char = dict(enumerate(chars))
+#    char2int = {ch: ii for ii, ch in int2char.items()}
+#    
+#    # encoding
+#    encoded_dict = {}
+#    for value in category_lines:
+#        encoded = np.array([char2int[ch] for ch in category_lines[value]])
+#        encoded_dict[value] = encoded
+#    
+#    
+#    return chars, all_categories, encoded_dict
+#
 
-def get_chars(filepath):
-    """
-    Returns list of all characters present in a file
-    """
-    with open(filepath, 'r') as f:
-        data = f.read()
+def load_data(path):
+    data_files = glob.glob(path +'/*.txt')	
+    data = []
+    all_lines = {}
+    all_vars = []
+    for fn in data_files:
+        var = os.path.basename(fn).split('.')[0]
+        all_lines[var] = open(fn).readlines()
+        all_vars.append(var)
 
-    chars = list(set(data))
-    return chars
+    chars = set()
+    for var in all_lines:
+        for line in all_lines[var]:
+            chars.add([i for i in line])
 
+    print(chars)
+    idx2chars = list(chars)
+    char2idx = {j: i for i, j in enumerate(idx2chars)} 
 
-def load_data(filepath, chars=None):
-    """
-    Opens a data file, determines the set of characters present in the file and encodes the characters.
-    """
-    with open(filepath, 'r') as f:
-        data = f.read()
+    for var in all_lines:
+        for line in lines:
+            new_line = []
+            for char in line:
+                new_line.append([char, var]) 
+            data.append(new_line)
 
-    if chars is None:
-        chars = tuple(set(data))
-    
-    # lookup tables for encoding
-    int2char = dict(enumerate(chars))
-    char2int = {ch: ii for ii, ch in int2char.items()}
-    
-    # encoding
-    encoded = np.array([char2int[ch] for ch in data])
-
-    return chars, encoded
-
-def findFiles(path): return glob.glob(path)
-
-def readLines(filename):
-    lines = open(filename).read().strip().split('\n')
-    return lines
-
-def load_data_cl(chars=None):
-    """
-    Opens a data file, determines the set of characters present in the file and encodes the characters.
-    """
-    
-    category_lines = {}
-    all_categories = []
-    for filename in findFiles('data/*.txt'):
-        category = filename.split('/')[-1].split('.')[0]
-        all_categories.append(category)
-        lines = readLines(filename)
-        category_lines[category] = lines
-
-    n_categories = len(all_categories)
-    
-        #print('data: ', data)
-    if chars is None:
-        # Code to get unique characters
-        unique_chars = set()
-        for value in category_lines.values():
-            unique_chars.update(set(value))
-        chars = tuple(unique_chars)
-        #chars = tuple(set(data))
-    
-    # lookup tables for encoding
-    int2char = dict(enumerate(chars))
-    char2int = {ch: ii for ii, ch in int2char.items()}
-    
-    # encoding
-    encoded_dict = {}
-    for value in category_lines:
-        encoded = np.array([char2int[ch] for ch in category_lines[value]])
-        encoded_dict[value] = encoded
-    
-    
-    return chars, all_categories, encoded_dict
-
+     print(data[:10])
+     return chars, all_vars, data
 
 def one_hot_encode(arr, n_labels):
     """
