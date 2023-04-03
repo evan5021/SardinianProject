@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
-     
+
+from torch.nn.utils.rnn import pad_sequence
 
 from charrnn import *
 
@@ -19,13 +20,19 @@ print(device)
 # load data
 chars, all_vars, data = load_data('data')
 
+data = pad_seqs(data)
+text_data, var_data = split_data(data)
+
+#print('TEXT: ', text_data[:5])
+#print('VAR: ', var_data[:5])
+
 #print('chars: ', chars)
 #print('all_vars: ', all_vars)
 #print('data: ', data)
 
 #data shape [[[20, 'sc-camp'], [13, 'sc-camp']], ...]
 
-print(data)
+#print(data)
 #print(chars)
 
 n_hidden=256
@@ -39,5 +46,5 @@ net = CharRNN(chars, all_vars, n_hidden=256, n_layers=3)
 # train
 #plt.figure(figsize=(12, 4))
 name1 = 'combined_model_'+str(n_hidden)+'_'+str(n_layers)
-train(net, data, epochs=100, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
+train(net, text_data, var_data, epochs=100, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
       name = name1, plot=False, early_stop=False)
