@@ -12,7 +12,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
-
+"""
 def load_data(path):    
     data_files = glob.glob(path +'/*.txt')	
     data = []
@@ -57,6 +57,51 @@ def load_data(path):
     
     
     return chars, all_vars, data
+"""
+
+def load_data(path):    
+    data_files = glob.glob(path +'/*.txt')	
+    print(data_files)
+    #data = []
+    all_lines = {}
+    all_vars = []
+    all_text = '' #Added a var that holds all the text
+    i = 0
+    
+    idx2var = []
+    
+    for fn in data_files:
+        var = os.path.basename(fn).split('.')[0]
+        with open(fn, 'r') as file:
+            all_lines[i] = file.read()
+        idx2var.append((var,i))
+        for lines in all_lines[i]:
+            all_text += lines #Add all text to all_text
+        all_vars.append(var)
+        i += 1
+
+    #chars = set()
+    
+    chars = tuple(set(all_text)) #Collects a set of all the chars
+    
+    var_data = {}
+    
+    list_chars = list(chars)
+    list_chars.remove(' ')
+    list_chars.insert(0, ' ')
+    idx2chars = list_chars
+    char2idx = {j: i for i, j in enumerate(idx2chars)} 
+    
+    for var in all_lines:
+        var_data[var] = np.array([char2idx[ch] for ch in all_lines[var]])
+            
+    #print('DATA: ', data)
+    #We want to return an encoded array for 'data'
+    #print('New_data: ', new_data)
+    
+    print(var_data)
+    return chars, all_vars, var_data
+
 
 def split_data(data):
     text_data = []
@@ -71,6 +116,11 @@ def split_data(data):
         var_data.append(var_sent_data)
         
     return text_data, var_data
+
+"""
+def sort_sublists(data):
+    new_data = sorted(data, key=lambda x: 
+"""
 
 def pad_seqs(data):
     max_len = len(data[-1])
@@ -96,23 +146,19 @@ def one_hot_encode(arr, n_labels):
     return one_hot
 
 
-def get_batches(arr, n_seqs, n_steps): #maybe add another element that is the variant
+def get_batches(arr, var, n_seqs, n_steps): #maybe add another element that is the variant
     """
     Batch generator that returns mini-batches of size (n_seqs x n_steps)
     """
-
+    print(type(arr))
+    print(arr)
     batch_size = n_seqs * n_steps
     n_batches = len(arr) // batch_size
 
-    arr = np.array(arr)
-    
     # always create full batches
     arr = arr[:n_batches * batch_size]
     
     # reshape
-    #print(arr)
-
-    #cannot reshape list
     arr = arr.reshape((n_seqs, -1))
     
     for n in range(0, arr.shape[1], n_steps):
@@ -125,7 +171,11 @@ def get_batches(arr, n_seqs, n_steps): #maybe add another element that is the va
             y[:, :-1], y[:, -1] = x[:, 1:], arr[:, n + n_steps]
         except IndexError:
             y[:, :-1], y[:, -1] = x[:, 1:], arr[:, 0]
-        yield x, y
+            
+        var_arr = np.zeros_like(y, dtype=y.dtype)
+        var_arr.fill(var)
+        
+        yield x, [y, var_arr]
 
 class CharRNN(nn.Module):
     def __init__(self, tokens, vars_ls, n_hidden=256, n_layers=2, drop_prob=0.5, num_vars = 4):
@@ -175,7 +225,7 @@ class CharRNN(nn.Module):
         x_char = self.fc1(x)
         x_var = self.fc2(x)
         
-        return x_var, x_char, hidden
+        return x_char, x_var, hidden
     
     def predict(self, char, hidden=None, device=torch.device('cpu'), top_k=None):
         """
@@ -274,7 +324,9 @@ def save_checkpoint(net, opt, filename, train_history={}):
                   'state_dict': net.state_dict(),
                   'optimizer': opt.state_dict(),
                   'tokens': net.chars,
-                  'train_history': train_history}
+                  'train_history': train_history,
+                  'var_ls': net.vars
+                  }
 
     with open(filename, 'wb') as f:
         torch.save(checkpoint, f)
@@ -294,13 +346,14 @@ def load_checkpoint(filename):
 
 plt.ion() # Allow live updates of plots
 
-def train(net, text_data, var_data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_frac=0.1, device=torch.device('cpu'),
+def train(net, var_data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_frac=0.1, device=torch.device('cpu'),
           name='checkpoint', early_stop=True, plot=True):
     """
     Training loop.
     """
     net.train() # switch into training mode
     opt = torch.optim.Adam(net.parameters(), lr=lr) # initialize optimizer
+    
     criterion_char = nn.CrossEntropyLoss()
     criterion_var = nn.CrossEntropyLoss()
     # initialize loss function
@@ -309,21 +362,7 @@ def train(net, text_data, var_data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, 
     
     #Currently 'data' is a dictionary of vars:[text]
     
-    import random
-    SEED = 448
-
-    random.seed(SEED)
-    random.shuffle(text_data)
-    random.seed(SEED)
-    random.shuffle(var_data)
-    
     # create training and validation data
-    val_idx = int(len(text_data) * (1 - val_frac))
-    
-    
-    
-    text_data, text_val_data = text_data[:val_idx], text_data[val_idx:]
-    var_data, var_val_data = var_data[:val_idx], var_data[val_idx:]
     
     net.to(device) # move neural net to GPU/CPU memory
     
@@ -335,61 +374,84 @@ def train(net, text_data, var_data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, 
     
     # main loop over training epochs
     for e in range(epochs):
-        hidden = None # reste hidden state after each epoch
         
-        # loop over batches
-        for x, y in get_batches(text_data, n_seqs, n_steps):
+        for var in var_data:
             
-            # encode data and create torch-tensors
-            x = one_hot_encode(x, n_chars)
-            inputs, targets = torch.from_numpy(x).to(device), torch.tensor(y, dtype=torch.long).to(device)
+            val_idx = int(len(var_data[var]) * (1 - val_frac))
+    
+            data, val_data = var_data[var][:val_idx], var_data[var][val_idx:]
+        
+        
+            hidden = None # reste hidden state after each epoch
+        
+            # loop over batches
+            for x, y in get_batches(data, var, n_seqs, n_steps):
             
-            # reset gradient information
-            net.zero_grad()
-            
-            # generate network output
-            output_char, output_var, hidden = net.forward(inputs, hidden)
-            
-            # compute loss
-            loss_char = criterion_char(output_char.view(n_seqs * n_steps, n_chars), targets.view(n_seqs * n_steps))
-            loss_var = criterion_var(output_var.view(n_seqs * n_steps, n_vars), targets.view(n_seqs * n_steps))
-            
-            loss = criterion_char + criterion_var
-            
-            # compute gradients
-            loss.backward()
-
-            # gradient clipping to prevent exploding gradients
-            nn.utils.clip_grad_norm_(net.parameters(), clip)
-            
-            # optmize
-            opt.step()
-
-            # prevent backpropagating through the entire training history
-            # by detaching hidden state and cell state
-            hidden = (hidden[0].detach(), hidden[1].detach())
-            
-        # validation step is done without tracking gradients
-        with torch.no_grad():
-            val_h = None
-            val_losses = []
-            
-            for x, y in get_batches(val_data, n_seqs, n_steps):
+                # encode data and create torch-tensors
                 x = one_hot_encode(x, n_chars)
-                inputs, targets = torch.from_numpy(x).to(device), torch.tensor(y, dtype=torch.long).to(device)
-
-                output, val_h = net.forward(inputs, val_h)
                 
-                val_loss = criterion(output.view(n_seqs * n_steps, n_chars), targets.view(n_seqs * n_steps))
-                val_losses.append(val_loss.item())
+                #print('y[0] ', type(y[0]))
+                #print('y[1] ', y[1])
+                
+                inputs, targets_char, targets_var = torch.from_numpy(x).to(device), torch.tensor(y[0], dtype = torch.long).to(device), torch.tensor(y[1], dtype = torch.long).to(device)
+                
+                #print('next ', targets_var)
+                
+                # reset gradient information
+                net.zero_grad()
             
-            # compute mean validation loss over batches
-            mean_val_loss = np.mean(val_losses)
+                # generate network output
+                output_char, output_var, hidden = net.forward(inputs, hidden)
+            
+            
+                # compute loss
+                loss_char = criterion_char(output_char.view(n_seqs * n_steps, n_chars), targets_char.view(n_seqs * n_steps))
+                
+                #print('output_var ', output_var.view(n_seqs * n_steps, n_vars).squeeze())
+                #print('targets_var ', targets_var)
+                
+                loss_var = criterion_var(output_var.view(n_seqs * n_steps, n_vars), targets_var.view(n_seqs * n_steps))
+            
+                loss = loss_char + loss_var
+            
+                # compute gradients
+                loss.backward()
+
+                # gradient clipping to prevent exploding gradients
+                nn.utils.clip_grad_norm_(net.parameters(), clip)
+            
+                # optmize
+                opt.step()
+
+                # prevent backpropagating through the entire training history
+                # by detaching hidden state and cell state
+                hidden = (hidden[0].detach(), hidden[1].detach())
+            
+            # validation step is done without tracking gradients
+            with torch.no_grad():
+                val_h = None
+                val_losses = []
+            
+                for x, y in get_batches(val_data, var, n_seqs, n_steps):
+                    x = one_hot_encode(x, n_chars)
+                    inputs, targets_char, targets_var = torch.from_numpy(x).to(device), torch.tensor(y[0], dtype = torch.long).to(device), torch.tensor(y[1], dtype = torch.long).to(device)
+
+                    output_char, output_var, val_h = net.forward(inputs, val_h)
+                
+                    val_loss_char = criterion_char(output_char.view(n_seqs * n_steps, n_chars), targets_char.view(n_seqs * n_steps))
+                    val_loss_var = criterion_var(output_var.view(n_seqs * n_steps, n_vars), targets_var.view(n_seqs * n_steps))
+                    
+                    val_loss = val_loss_char.item() + val_loss_var.item()
+                    
+                    val_losses.append(val_loss)
+            
+                # compute mean validation loss over batches
+                mean_val_loss = np.mean(val_losses)
             
             # track progress
-            train_history['epoch'].append(e+1)
-            train_history['loss'].append(loss.item())
-            train_history['val_loss'].append(mean_val_loss)
+                train_history['epoch'].append(e+1)
+                train_history['loss'].append(loss.item())
+                train_history['val_loss'].append(mean_val_loss)
         
         if plot:
             # create live plot of training loss and validation loss
