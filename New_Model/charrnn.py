@@ -40,6 +40,25 @@ def load_data(filepath, chars=None):
     
     # encoding
     encoded = np.array([char2int[ch] for ch in data])
+    
+    return chars, encoded
+
+def load_data_csv(ls_strings, chars=None):
+    """
+    Opens a data file, determines the set of characters present in the file and encodes the characters.
+    """
+    for line in ls_strings:
+        data = data + line + '\n'
+
+    if chars is None:
+        chars = tuple(set(data))
+    
+    # lookup tables for encoding
+    int2char = dict(enumerate(chars))
+    char2int = {ch: ii for ii, ch in int2char.items()}
+    
+    # encoding
+    encoded = np.array([char2int[ch] for ch in data])
 
     return chars, encoded
 
@@ -61,6 +80,9 @@ def one_hot_encode(arr, n_labels):
 
 
 def get_batches(arr, n_seqs, n_steps):
+    
+    print('arr: ', arr)
+    
     """
     Batch generator that returns mini-batches of size (n_seqs x n_steps)
     """
@@ -241,6 +263,7 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
     """
     Training loop.
     """
+    #print("data: ", data)
     net.train() # switch into training mode
     opt = torch.optim.Adam(net.parameters(), lr=lr) # initialize optimizer
     criterion = nn.CrossEntropyLoss() # initialize loss function
@@ -248,6 +271,7 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
     # create training and validation data
     val_idx = int(len(data) * (1 - val_frac))
     data, val_data = data[:val_idx], data[val_idx:]
+    
     
     net.to(device) # move neural net to GPU/CPU memory
     
@@ -308,6 +332,7 @@ def train(net, data, epochs=10, n_seqs=10, n_steps=50, lr=0.001, clip=5, val_fra
             
             # track progress
             train_history['epoch'].append(e+1)
+            print('loss.item(): ', loss.item())
             train_history['loss'].append(loss.item())
             train_history['val_loss'].append(mean_val_loss)
         
