@@ -18,28 +18,20 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # load data
-chars, all_vars, var_data = load_data('data')
+chars, all_vars, data, _ = load_data('data')
 
-#data = pad_seqs(data)
 
-#text_data, var_data = split_data(data)
+import random
+SEED = 500
 
-#print('TEXT: ', text_data[:5])
-#print('VAR: ', var_data[:5])
+random.seed(SEED)
+random.shuffle(data)
 
-#print('chars: ', chars)
-#print('all_vars: ', all_vars)
-#print('data: ', data)
+data = data[:(int(0.8 * len(data)))]
 
-#data shape [[[20, 'sc-camp'], [13, 'sc-camp']], ...]
 
-#print(data)
-#print(chars)
-
-n_hidden=16
-n_layers=2
-
-#set variants
+n_hidden=256 #256
+n_layers=3 #3
 
 # create RNN
 net = CharRNN(chars, all_vars, n_hidden=n_hidden, n_layers=n_layers)
@@ -47,5 +39,5 @@ net = CharRNN(chars, all_vars, n_hidden=n_hidden, n_layers=n_layers)
 # train
 #plt.figure(figsize=(12, 4))
 name1 = 'combined_model_'+str(n_hidden)+'_'+str(n_layers)
-train(net, var_data, epochs=5, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
+train(net, data, epochs=100, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
       name = name1, plot=False, early_stop=False)
