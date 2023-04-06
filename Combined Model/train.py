@@ -30,7 +30,7 @@ random.shuffle(data)
 data = data[:(int(0.8 * len(data)))]
 
 
-n_hidden=256 #256
+n_hidden=128 #256
 n_layers=3 #3
 
 # create RNN
@@ -39,5 +39,5 @@ net = CharRNN(chars, all_vars, n_hidden=n_hidden, n_layers=n_layers)
 # train
 #plt.figure(figsize=(12, 4))
 name1 = 'combined_model_'+str(n_hidden)+'_'+str(n_layers)
-train(net, data, epochs=100, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
+train(net, data, epochs=50, n_seqs=4, n_steps=1, lr=0.0001, device=device, val_frac=0.5,
       name = name1, plot=False, early_stop=False)
