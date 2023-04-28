@@ -1,4 +1,4 @@
-#Predictive Keyboard for Multi-Dialect Languages
+# Predictive Keyboard for Multi-Dialect Languages
 
 While there are many computational resources for many of the major languages, it remains that the majority of languages today do not have such support. This, combined with the fact that many of the 7,000+ languages on this planet do not have ample resources to train large language models, are why we decided to create this repo.
 
